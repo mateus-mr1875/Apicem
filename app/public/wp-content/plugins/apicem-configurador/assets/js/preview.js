@@ -1,26 +1,17 @@
-/* Apicem SVG Preview Engine — v4: designer SVG files with color/grain/caixa overlays */
+/* Apicem SVG Preview Engine — v5: designer SVGs + mix-blend-mode:color */
 'use strict';
 
 window.ApicemPreview = (function () {
 
   // ── Element refs ──────────────────────────────────────────
-  var svg, colorBg, deskImg, grainOverlay, caixaEl;
-  var topdownBg, topdownDesk;
+  var svg, deskImg, colorOverlay, caixaEl;
 
-  // ── Canvas dimensions (match designer viewBox) ─────────────
+  // ── Designer SVG canvas dimensions ────────────────────────
   var VW = 567.24;
   var VH = 287.59;
 
-  // ── Top-down desk parameters ───────────────────────────────
-  var SCALE = 2.5;
-  var PROF  = 70;
-  var D_TOP = Math.round(PROF * SCALE); // 175px
-  var CX    = VW / 2;                   // 283.62
-  var CY    = VH / 2;                   // 143.80
-
   // ── Caixa elétrica positions (SVG canvas coords) ───────────
-  // Values are approximate; calibrate visually if needed.
-  // Key: "largura-tipo" where tipo = reta | chanfrado
+  // Key: "largura-tipo" (tipo = reta | chanfrado)
   var CAIXA = {
     '120-reta':      { x: 165, y: 125, w: 100, h: 16 },
     '120-chanfrado': { x: 165, y: 105, w: 100, h: 16 },
@@ -30,71 +21,52 @@ window.ApicemPreview = (function () {
     '160-chanfrado': { x: 196, y: 105, w: 128, h: 16 },
   };
 
-  // ── Mode state ─────────────────────────────────────────────
-  var isPerspective = false;
-  var lastState     = {};
-  var fadeTimer     = null;
-  var FADE_MS       = 500;
+  var lastState = {};
 
   // ── Public API ─────────────────────────────────────────────
 
   function init(container) {
     container.innerHTML = buildSVG();
     svg          = container.querySelector('svg');
-    topdownBg    = svg.querySelector('#apicem-topdown-bg');
-    topdownDesk  = svg.querySelector('#apicem-topdown-desk');
-    colorBg      = svg.querySelector('#apicem-color-bg');
     deskImg      = svg.querySelector('#apicem-desk-img');
-    grainOverlay = svg.querySelector('#apicem-grain-overlay');
+    colorOverlay = svg.querySelector('#apicem-color-overlay');
     caixaEl      = svg.querySelector('#apicem-caixa');
-
-    isPerspective = false;
-    applyTopDown(true);
   }
 
   function update(state) {
     if (!svg) return;
     lastState = state;
 
-    var hex    = state.acabamento ? state.acabamento.hex  : '#E7DBC9';
-    var tipo   = state.acabamento ? state.acabamento.tipo : 'solido';
-    var seedId = state.acabamento ? (state.acabamento.id % 20) : 2;
+    var hex     = state.acabamento ? state.acabamento.hex  : '#E7DBC9';
+    var tipo    = state.acabamento ? state.acabamento.tipo : 'solido';
+    var seedId  = state.acabamento ? (state.acabamento.id % 20) : 2;
     var largura = state.tamanho ? state.tamanho.largura_cm : 140;
     var perfil  = state.borda   ? state.borda.perfil       : 'reta';
     var isChanf = (perfil === 'arredondada');
     var caixaKey = largura + '-' + (isChanf ? 'chanfrado' : 'reta');
 
-    // ── Color fills ───────────────────────────────────────────
-    colorBg.setAttribute('fill', hex);
-    topdownDesk.setAttribute('fill', hex);
+    // ── Color overlay (colorizes the desk via HSL color blend) ──
+    colorOverlay.setAttribute('fill', hex);
 
-    // ── Top-down desk rect proportions ───────────────────────
-    var deskW = Math.round(largura * SCALE);
-    topdownDesk.setAttribute('x', r(CX - deskW / 2));
-    topdownDesk.setAttribute('y', r(CY - D_TOP / 2));
-    topdownDesk.setAttribute('width', deskW);
-    topdownDesk.setAttribute('height', D_TOP);
-
-    // ── Designer SVG image ───────────────────────────────────
+    // ── Designer SVG (tamanho + borda determine which file) ─────
     var pluginUrl = (window.apicemConfig && window.apicemConfig.pluginUrl) || '';
     var svgHref   = pluginUrl + 'assets/svgs/' + largura + '-' + (isChanf ? 'chanfrado' : 'reta') + '.svg';
     if (deskImg.getAttribute('href') !== svgHref) {
-      deskImg.setAttribute('href', svgHref);
+      deskImg.setAttribute('href',       svgHref);
+      deskImg.setAttribute('xlink:href', svgHref);
     }
 
-    // ── Wood grain ────────────────────────────────────────────
-    if (tipo === 'madeira' && isPerspective) {
-      grainOverlay.setAttribute('fill', hex);
-      svg.querySelector('#apicem-grain-filter feTurbulence').setAttribute('seed', seedId);
-      grainOverlay.style.opacity = '1';
-      grainOverlay.style.display = '';
+    // ── Grain: applied directly to deskImg (madeira only) ──────
+    if (tipo === 'madeira') {
+      var turbEl = svg.querySelector('#apicem-grain-filter feTurbulence');
+      if (turbEl) turbEl.setAttribute('seed', seedId);
+      deskImg.setAttribute('filter', 'url(#apicem-grain-filter)');
     } else {
-      grainOverlay.style.opacity = '0';
-      grainOverlay.style.display = 'none';
+      deskImg.removeAttribute('filter');
     }
 
-    // ── Caixa elétrica ────────────────────────────────────────
-    if (state.caixa && isPerspective) {
+    // ── Caixa elétrica ─────────────────────────────────────────
+    if (state.caixa) {
       var c    = CAIXA[caixaKey] || CAIXA['140-reta'];
       var pts4 = [
         { x: c.x,       y: c.y       },
@@ -109,16 +81,10 @@ window.ApicemPreview = (function () {
     }
   }
 
+  // setMode() is kept for API compatibility with configurador.js,
+  // but no transition is needed — the desk always appears in perspective.
   function setMode(mode) {
-    var wantPersp = (mode === 'perspective');
-    if (wantPersp === isPerspective) return;
-    isPerspective = wantPersp;
-
-    if (wantPersp) {
-      applyPerspective();
-    } else {
-      applyTopDown(false);
-    }
+    update(lastState);
   }
 
   function getCaption(state) {
@@ -129,67 +95,7 @@ window.ApicemPreview = (function () {
     return parts.join(' · ');
   }
 
-  // ── Private: mode transitions ──────────────────────────────
-
-  function applyPerspective() {
-    if (fadeTimer) clearTimeout(fadeTimer);
-
-    // Make perspective elements visible (start fade-in)
-    colorBg.style.display = '';
-    deskImg.style.display = '';
-    // requestAnimationFrame ensures display change is painted before opacity transition
-    requestAnimationFrame(function() {
-      colorBg.style.opacity = '1';
-      deskImg.style.opacity = '1';
-      topdownBg.style.opacity  = '0';
-      topdownDesk.style.opacity = '0';
-    });
-
-    // Hide top-down elements after fade completes
-    fadeTimer = setTimeout(function() {
-      topdownBg.style.display   = 'none';
-      topdownDesk.style.display = 'none';
-      // Re-apply to trigger grain/caixa visibility
-      update(lastState);
-    }, FADE_MS);
-  }
-
-  function applyTopDown(immediate) {
-    if (fadeTimer) clearTimeout(fadeTimer);
-
-    if (immediate) {
-      topdownBg.style.opacity   = '1';
-      topdownDesk.style.opacity  = '1';
-      topdownBg.style.display   = '';
-      topdownDesk.style.display = '';
-      colorBg.style.opacity    = '0';
-      deskImg.style.opacity     = '0';
-      colorBg.style.display    = 'none';
-      deskImg.style.display     = 'none';
-      grainOverlay.style.display = 'none';
-      caixaEl.style.display     = 'none';
-      return;
-    }
-
-    // Fade out perspective, fade in top-down
-    topdownBg.style.display   = '';
-    topdownDesk.style.display = '';
-    requestAnimationFrame(function() {
-      topdownBg.style.opacity   = '1';
-      topdownDesk.style.opacity  = '1';
-      colorBg.style.opacity    = '0';
-      deskImg.style.opacity     = '0';
-    });
-
-    fadeTimer = setTimeout(function() {
-      colorBg.style.display    = 'none';
-      deskImg.style.display     = 'none';
-      grainOverlay.style.display = 'none';
-      caixaEl.style.display     = 'none';
-    }, FADE_MS);
-  }
-
-  // ── Private: SVG template ──────────────────────────────────
+  // ── SVG template ───────────────────────────────────────────
 
   function buildSVG() {
     return [
@@ -197,10 +103,7 @@ window.ApicemPreview = (function () {
       '     xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"',
       '     role="img" aria-label="Preview da mesa" style="width:100%;height:auto">',
       '  <defs>',
-      '    <style>',
-      '      #apicem-topdown-bg, #apicem-topdown-desk,',
-      '      #apicem-color-bg,   #apicem-desk-img { transition: opacity ' + FADE_MS + 'ms ease; }',
-      '    </style>',
+      '    <!-- Wood grain: directional turbulence, soft-light blend, values clamped to [0.28,0.73] -->',
       '    <filter id="apicem-grain-filter" x="0%" y="0%" width="100%" height="100%"',
       '            color-interpolation-filters="sRGB">',
       '      <feTurbulence type="turbulence" baseFrequency="0.012 0.40" numOctaves="5"',
@@ -216,30 +119,27 @@ window.ApicemPreview = (function () {
       '    </filter>',
       '  </defs>',
       '',
-      '  <!-- Top-down mode (passo Tamanho) -->',
-      '  <rect id="apicem-topdown-bg"   x="0" y="0" width="567.24" height="287.59"',
-      '        fill="#F5EFE6"/>',
-      '  <rect id="apicem-topdown-desk" x="155" y="56" width="350" height="175"',
-      '        fill="#E7DBC9" rx="4"/>',
+      '  <!-- Designer SVG (gray PNG). Grain filter applied dynamically for madeira. -->',
+      '  <image id="apicem-desk-img"',
+      '         x="0" y="0" width="567.24" height="287.59"',
+      '         href="" xlink:href=""',
+      '         preserveAspectRatio="xMidYMid meet"/>',
       '',
-      '  <!-- Perspective mode -->',
-      '  <rect  id="apicem-color-bg" x="0" y="0" width="567.24" height="287.59"',
-      '         fill="#E7DBC9" style="display:none;opacity:0"/>',
-      '  <image id="apicem-desk-img" x="0" y="0" width="567.24" height="287.59"',
-      '         href="" xlink:href="" style="mix-blend-mode:multiply;display:none;opacity:0"/>',
+      '  <!-- Color overlay: mix-blend-mode:color maps hex hue/sat onto the gray desk -->',
+      '  <rect id="apicem-color-overlay"',
+      '        x="0" y="0" width="567.24" height="287.59"',
+      '        fill="#E7DBC9"',
+      '        style="mix-blend-mode: color"/>',
       '',
-      '  <!-- Shared overlays -->',
-      '  <rect  id="apicem-grain-overlay" x="0" y="0" width="567.24" height="287.59"',
-      '         fill="#E7DBC9" filter="url(#apicem-grain-filter)"',
-      '         style="display:none;pointer-events:none"/>',
-      '  <path  id="apicem-caixa" fill="#A09B95"',
-      '         stroke="rgba(43,36,32,0.45)" stroke-width="1.5" stroke-linejoin="round"',
-      '         style="display:none"/>',
+      '  <!-- Caixa elétrica -->',
+      '  <path id="apicem-caixa" fill="#A09B95"',
+      '        stroke="rgba(43,36,32,0.45)" stroke-width="1.5" stroke-linejoin="round"',
+      '        style="display:none"/>',
       '</svg>',
     ].join('\n');
   }
 
-  // ── Private: rounded polygon path ─────────────────────────
+  // ── Rounded polygon path (reused for caixa) ────────────────
 
   function roundedPolygonPath(polygon, frac) {
     var n = polygon.length;
