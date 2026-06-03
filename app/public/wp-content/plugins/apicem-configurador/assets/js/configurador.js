@@ -320,7 +320,22 @@
       btn.setAttribute('title', a.title);
 
       if (a.tipo === 'madeira') {
-        btn.style.backgroundImage = 'repeating-linear-gradient(90deg, rgba(255,255,255,0.08) 0 1px, transparent 1px 4px)';
+        var seed = (a.id || 1) % 20;
+        var svgStr = '<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72">' +
+          '<defs><filter id="g' + seed + '" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">' +
+          '<feTurbulence type="turbulence" baseFrequency="0.015 0.40" numOctaves="4" seed="' + seed + '" result="f"/>' +
+          '<feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="' + (seed + 5) + '" result="k"/>' +
+          '<feBlend in="f" in2="k" mode="screen" result="c"/>' +
+          '<feColorMatrix in="c" type="saturate" values="0" result="gr"/>' +
+          '<feBlend in="SourceGraphic" in2="gr" mode="soft-light" result="b"/>' +
+          '<feComposite in="b" in2="SourceGraphic" operator="in"/>' +
+          '</filter></defs>' +
+          '<rect width="72" height="72" fill="' + a.hex + '" filter="url(#g' + seed + ')"/>' +
+          '</svg>';
+        btn.style.backgroundImage = 'url("data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgStr) + '")';
+        btn.style.backgroundSize   = 'cover';
+        btn.style.backgroundRepeat = 'no-repeat';
+        btn.style.backgroundColor  = 'transparent';
       }
 
       var label = document.createElement('span');

@@ -163,10 +163,10 @@ window.ApicemPreview = (function () {
     // All face/edge rendering — borda-specific
     applyBorda(perfil, FL, FR, BR, FLb, FRb, BRb, hex, edgeH, t);
 
-    // Caixa elétrica
+    // Caixa elétrica — always neutral warm-gray, slightly rounded corners
     if (state.caixa) {
-      caixaEl.setAttribute('points', pts(computeCaixa(FL_td, FL_p, W, t)));
-      caixaEl.setAttribute('fill',   shade(hex, -32));
+      caixaEl.setAttribute('d',    roundedPolygonPath(computeCaixa(FL_td, FL_p, W, t), 0.12));
+      caixaEl.setAttribute('fill', '#A09B95');
       caixaEl.style.display = '';
     } else {
       caixaEl.style.display = 'none';
@@ -337,18 +337,19 @@ window.ApicemPreview = (function () {
       '<svg id="apicem-preview-svg" viewBox="0 0 560 280" xmlns="http://www.w3.org/2000/svg"',
       '     role="img" aria-label="Preview da mesa">',
       '  <defs>',
-      '    <!-- Organic wood grain: directional fibers blended with knot noise -->',
+      '    <!-- Organic wood grain: directional fibers + knot noise, soft-light blend clipped to polygon shape -->',
       '    <filter id="apicem-grain-filter" x="0%" y="0%" width="100%" height="100%" color-interpolation-filters="sRGB">',
       '      <feTurbulence type="turbulence"   baseFrequency="0.012 0.40" numOctaves="5" seed="2" result="fibers"/>',
       '      <feTurbulence type="fractalNoise" baseFrequency="0.06 0.06"  numOctaves="3" seed="7" result="knots"/>',
       '      <feBlend in="fibers" in2="knots" mode="screen" result="combined"/>',
       '      <feColorMatrix in="combined" type="saturate" values="0" result="gray"/>',
       '      <feComponentTransfer in="gray" result="grain">',
-      '        <feFuncR type="gamma" amplitude="1.1" exponent="0.75" offset="-0.05"/>',
-      '        <feFuncG type="gamma" amplitude="1.1" exponent="0.75" offset="-0.05"/>',
-      '        <feFuncB type="gamma" amplitude="1.1" exponent="0.75" offset="-0.05"/>',
+      '        <feFuncR type="gamma" amplitude="1" exponent="0.85" offset="0"/>',
+      '        <feFuncG type="gamma" amplitude="1" exponent="0.85" offset="0"/>',
+      '        <feFuncB type="gamma" amplitude="1" exponent="0.85" offset="0"/>',
       '      </feComponentTransfer>',
-      '      <feBlend in="SourceGraphic" in2="grain" mode="multiply"/>',
+      '      <feBlend in="SourceGraphic" in2="grain" mode="soft-light" result="blended"/>',
+      '      <feComposite in="blended" in2="SourceGraphic" operator="in"/>',
       '    </filter>',
       '  </defs>',
       '  <ellipse id="apicem-shadow"          fill="rgba(43,36,32,1)" fill-opacity="0.07"/>',
@@ -363,7 +364,7 @@ window.ApicemPreview = (function () {
       '  <path    id="apicem-top-face-rounded"  style="display:none;transition:fill .3s ease"/>',
       '  <polygon id="apicem-grain-overlay"    filter="url(#apicem-grain-filter)"',
       '           style="display:none;pointer-events:none;will-change:opacity"/>',
-      '  <polygon id="apicem-caixa"            style="display:none;transition:fill .3s ease"/>',
+      '  <path    id="apicem-caixa"            style="display:none;transition:fill .3s ease"/>',
       '</svg>',
     ].join('\n');
   }
@@ -384,6 +385,22 @@ window.ApicemPreview = (function () {
     var gv = Math.max(0, Math.min(255, ((n >> 8) & 0xFF) + amount));
     var bv = Math.max(0, Math.min(255, (n & 0xFF)         + amount));
     return '#' + ((1 << 24) + (rv << 16) + (gv << 8) + bv).toString(16).slice(1);
+  }
+
+  // Rounded polygon path — bezier arcs at each vertex (works for rect and parallelogram)
+  function roundedPolygonPath(polygon, frac) {
+    var n = polygon.length;
+    var d = '';
+    for (var i = 0; i < n; i++) {
+      var cur  = polygon[i];
+      var next = polygon[(i + 1) % n];
+      var prev = polygon[(i + n - 1) % n];
+      var p1 = { x: prev.x + (cur.x - prev.x) * (1 - frac), y: prev.y + (cur.y - prev.y) * (1 - frac) };
+      var p2 = { x: cur.x  + (next.x - cur.x) * frac,       y: cur.y  + (next.y - cur.y) * frac       };
+      d += (i === 0 ? 'M' : 'L') + r(p1.x) + ',' + r(p1.y);
+      d += ' Q' + r(cur.x) + ',' + r(cur.y) + ' ' + r(p2.x) + ',' + r(p2.y);
+    }
+    return d + 'Z';
   }
 
   return { init: init, update: update, getCaption: getCaption, setMode: setMode };
