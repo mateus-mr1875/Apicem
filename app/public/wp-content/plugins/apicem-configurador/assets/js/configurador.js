@@ -452,6 +452,9 @@
 
   function goToStep(index) {
     if (index < 0 || index >= activeSteps.length) return;
+    var slug = activeSteps[index] ? activeSteps[index].slug : '';
+    var isTopView = (slug === 'hero' || slug === 'tamanho');
+    ApicemPreview.setMode(isTopView ? 'top' : 'perspective');
     renderStep(index);
     stepContentEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
