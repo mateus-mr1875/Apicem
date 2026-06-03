@@ -324,10 +324,13 @@
         var svgStr = '<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72">' +
           '<defs><filter id="g' + seed + '" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">' +
           '<feTurbulence type="turbulence" baseFrequency="0.015 0.40" numOctaves="4" seed="' + seed + '" result="f"/>' +
-          '<feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="' + (seed + 5) + '" result="k"/>' +
-          '<feBlend in="f" in2="k" mode="screen" result="c"/>' +
-          '<feColorMatrix in="c" type="saturate" values="0" result="gr"/>' +
-          '<feBlend in="SourceGraphic" in2="gr" mode="soft-light" result="b"/>' +
+          '<feColorMatrix in="f" type="saturate" values="0" result="gr"/>' +
+          '<feComponentTransfer in="gr" result="g2">' +
+          '<feFuncR type="linear" slope="0.45" intercept="0.28"/>' +
+          '<feFuncG type="linear" slope="0.45" intercept="0.28"/>' +
+          '<feFuncB type="linear" slope="0.45" intercept="0.28"/>' +
+          '</feComponentTransfer>' +
+          '<feBlend in="SourceGraphic" in2="g2" mode="soft-light" result="b"/>' +
           '<feComposite in="b" in2="SourceGraphic" operator="in"/>' +
           '</filter></defs>' +
           '<rect width="72" height="72" fill="' + a.hex + '" filter="url(#g' + seed + ')"/>' +
