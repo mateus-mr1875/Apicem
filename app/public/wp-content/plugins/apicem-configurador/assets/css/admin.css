@@ -1,0 +1,40 @@
+/* ── Apicem Admin styles ── */
+
+/* Sortable drag handle */
+.apicem-drag-handle {
+  cursor: grab;
+  color: #999;
+  padding: 0 8px;
+}
+.apicem-drag-handle:active { cursor: grabbing; }
+
+tr.apicem-sortable-placeholder {
+  background: #f0f6ff !important;
+  outline: 2px dashed #bd5d3a;
+}
+
+/* Settings page */
+.apicem-settings-wrap .nav-tab-wrapper { margin-bottom: 0; }
+.apicem-tab-content {
+  background: #fff;
+  border: 1px solid #c3c4c7;
+  border-top: none;
+  padding: 24px;
+}
+
+.apicem-wizard-table th,
+.apicem-wizard-table td {
+  vertical-align: top;
+  padding: 8px;
+}
+
+.apicem-wizard-table textarea { min-width: 200px; }
+
+.apicem-meta-table th {
+  font-weight: 600;
+  padding: 10px 0;
+  width: 180px;
+}
+
+/* Media upload button */
+.apicem-media-btn { margin-right: 6px !important; }

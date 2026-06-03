@@ -1,0 +1,15 @@
+{
+  "apiVersion": 3,
+  "name": "apicem/configurador",
+  "title": "Configurador Apicem",
+  "description": "Exibe o wizard de personalização da mesa Apicem.",
+  "category": "widgets",
+  "icon": "admin-customizer",
+  "keywords": ["apicem", "mesa", "configurador"],
+  "supports": {
+    "inserter": true,
+    "multiple": false,
+    "html": false
+  },
+  "render": "file:./render.php"
+}

@@ -1,0 +1,665 @@
+/* ── Apicem Configurador — Front-end styles ── */
+
+:root {
+  --linho:        #F5EFE6;
+  --creme:        #FBF8F3;
+  --areia:        #E7DBC9;
+  --argila:       #BD5D3A;
+  --argila-fundo: #9A4A2D;
+  --ambar:        #E8972C;
+  --cafe:         #2B2420;
+  --grafite:      #141210;
+  --cinza:        #8C8378;
+  --linha:        rgba(43,36,32,.14);
+  --radius-sm:    12px;
+  --radius:       18px;
+  --radius-lg:    22px;
+  --radius-pill:  40px;
+  --shadow-soft:  0 14px 30px -12px rgba(43,36,32,.5);
+  --shadow-float: 0 30px 60px -30px rgba(43,36,32,.30);
+  --font-display: "Orelega One", Georgia, serif;
+  --font-body:    "Hanken Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --container:    1080px;
+}
+
+/* ── Layout ─────────────────────────────────────────────── */
+
+.apicem-configurador {
+  font-family: var(--font-body);
+  color: var(--cafe);
+  background: var(--linho);
+  min-height: 100vh;
+}
+
+.apicem-layout {
+  display: grid;
+  grid-template-columns: 52% 1fr;
+  min-height: 100vh;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Preview column */
+.apicem-preview-col {
+  background: var(--creme);
+  border-right: 1px solid var(--linha);
+}
+
+.apicem-preview-sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 32px;
+  gap: 20px;
+}
+
+.apicem-preview-wrap {
+  width: 100%;
+  max-width: 480px;
+}
+
+.apicem-preview-wrap svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 20px 40px rgba(43,36,32,.18));
+  transition: filter .3s ease;
+}
+
+.apicem-preview-caption {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--cinza);
+  text-align: center;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  min-height: 20px;
+}
+
+/* Step column */
+.apicem-step-col {
+  display: flex;
+  flex-direction: column;
+  padding: 48px 56px 80px;
+  gap: 32px;
+  overflow-y: auto;
+}
+
+/* ── Stepper ────────────────────────────────────────────── */
+
+.apicem-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.apicem-stepper-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: opacity .2s;
+}
+
+.apicem-stepper-item.is-future {
+  cursor: default;
+  opacity: .4;
+  pointer-events: none;
+}
+
+.apicem-stepper-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--areia);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cinza);
+  transition: background .25s, border-color .25s, color .25s;
+  flex-shrink: 0;
+}
+
+.apicem-stepper-item.is-active .apicem-stepper-dot {
+  background: var(--argila);
+  border-color: var(--argila);
+  color: var(--linho);
+}
+
+.apicem-stepper-item.is-done .apicem-stepper-dot {
+  background: var(--areia);
+  border-color: var(--areia);
+  color: var(--cafe);
+}
+
+.apicem-stepper-sep {
+  width: 20px;
+  height: 1px;
+  background: var(--linha);
+  flex-shrink: 0;
+}
+
+/* ── Step content ───────────────────────────────────────── */
+
+.apicem-step {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: apicemFadeIn .35s ease both;
+}
+
+@keyframes apicemFadeIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.apicem-kicker {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--argila);
+}
+
+.apicem-step-title {
+  font-family: var(--font-display);
+  font-size: clamp(24px, 3vw, 38px);
+  line-height: 1.06;
+  margin: 0;
+  color: var(--grafite);
+}
+
+.apicem-step-text {
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--cinza);
+  margin: 0;
+}
+
+/* ── Hero step ──────────────────────────────────────────── */
+
+.apicem-hero-media {
+  width: 100%;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--areia);
+  aspect-ratio: 4/3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.apicem-hero-media img,
+.apicem-hero-media video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.apicem-hero-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--cinza);
+  width: 100%;
+  height: 100%;
+  min-height: 240px;
+}
+
+.apicem-hero-placeholder svg {
+  width: 64px;
+  height: 64px;
+  opacity: .4;
+}
+
+/* ── Options grid ───────────────────────────────────────── */
+
+.apicem-options {
+  display: grid;
+  gap: 12px;
+}
+
+.apicem-options.apicem-options--cards {
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+}
+
+.apicem-option-card {
+  background: var(--creme);
+  border: 2px solid var(--linha);
+  border-radius: var(--radius);
+  padding: 20px 16px;
+  cursor: pointer;
+  transition: border-color .2s, box-shadow .2s, transform .15s;
+  text-align: left;
+}
+
+.apicem-option-card:hover {
+  border-color: var(--areia);
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-2px);
+}
+
+.apicem-option-card.is-selected {
+  border-color: var(--argila);
+  box-shadow: 0 0 0 1px var(--argila);
+}
+
+.apicem-option-card-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--grafite);
+  margin: 0 0 4px;
+}
+
+.apicem-option-card-desc {
+  font-size: 13px;
+  color: var(--cinza);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ── Swatches (acabamento) ──────────────────────────────── */
+
+.apicem-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.apicem-swatch {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: outline .15s, transform .15s;
+  box-shadow: 0 2px 6px rgba(43,36,32,.15);
+}
+
+.apicem-swatch:hover {
+  transform: scale(1.12);
+}
+
+.apicem-swatch.is-selected {
+  outline: 2px solid var(--argila);
+  outline-offset: 3px;
+}
+
+.apicem-swatch-label {
+  position: absolute;
+  bottom: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--cafe);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s;
+}
+
+.apicem-swatch:hover .apicem-swatch-label,
+.apicem-swatch.is-selected .apicem-swatch-label {
+  opacity: 1;
+}
+
+/* Selected acabamento name display */
+.apicem-acabamento-selected-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--cafe);
+  min-height: 20px;
+  margin-top: 20px;
+}
+
+/* ── Toggle Sim/Não (caixa elétrica) ────────────────────── */
+
+.apicem-toggle-group {
+  display: flex;
+  gap: 12px;
+}
+
+.apicem-toggle-btn {
+  flex: 1;
+  padding: 16px 24px;
+  background: var(--creme);
+  border: 2px solid var(--linha);
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--cafe);
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  text-align: center;
+}
+
+.apicem-toggle-btn:hover {
+  border-color: var(--areia);
+}
+
+.apicem-toggle-btn.is-selected {
+  border-color: var(--argila);
+  background: rgba(189,93,58,.06);
+  color: var(--argila);
+}
+
+/* ── CEP step ───────────────────────────────────────────── */
+
+.apicem-cep-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 360px;
+}
+
+.apicem-input {
+  font-family: var(--font-body);
+  font-size: 16px;
+  padding: 14px 16px;
+  border: 2px solid var(--areia);
+  border-radius: var(--radius-sm);
+  background: var(--creme);
+  color: var(--cafe);
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color .2s;
+}
+
+.apicem-input:focus {
+  outline: none;
+  border-color: var(--argila);
+}
+
+.apicem-input:read-only {
+  background: var(--areia);
+  color: var(--cinza);
+}
+
+.apicem-cep-location {
+  font-size: 14px;
+  color: var(--cafe);
+  min-height: 20px;
+  font-weight: 500;
+}
+
+.apicem-cep-hint {
+  font-size: 13px;
+  color: var(--cinza);
+}
+
+/* ── Navigation buttons ─────────────────────────────────── */
+
+.apicem-nav {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.apicem-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 32px;
+  border: none;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .2s, transform .15s, box-shadow .2s;
+  text-decoration: none;
+  line-height: 1;
+}
+
+.apicem-btn--primary {
+  background: var(--argila);
+  color: var(--linho);
+}
+
+.apicem-btn--primary:hover:not(:disabled) {
+  background: var(--argila-fundo);
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-1px);
+}
+
+.apicem-btn--secondary {
+  background: transparent;
+  color: var(--cafe);
+  border: 2px solid var(--cafe);
+}
+
+.apicem-btn--secondary:hover {
+  background: var(--areia);
+}
+
+.apicem-btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+/* ── Modal ──────────────────────────────────────────────── */
+
+.apicem-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20,18,16,.6);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  backdrop-filter: blur(4px);
+  animation: apicemFadeIn .25s ease;
+}
+
+.apicem-modal-overlay[hidden] {
+  display: none;
+}
+
+.apicem-modal {
+  background: var(--creme);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 48px;
+  position: relative;
+  box-shadow: var(--shadow-float);
+}
+
+.apicem-modal-close {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--cinza);
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 50%;
+  transition: background .2s;
+}
+
+.apicem-modal-close:hover {
+  background: var(--areia);
+  color: var(--cafe);
+}
+
+.apicem-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Modal summary table */
+.apicem-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.apicem-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--linha);
+  font-size: 14px;
+}
+
+.apicem-summary-row:last-child { border-bottom: none; }
+
+.apicem-summary-label { color: var(--cinza); }
+.apicem-summary-value { font-weight: 600; color: var(--cafe); }
+
+/* Modal preview */
+.apicem-modal-preview {
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto;
+}
+
+.apicem-modal-preview svg { width: 100%; height: auto; }
+
+/* Modal form */
+.apicem-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.apicem-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.apicem-form-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cafe);
+}
+
+.apicem-form-label .apicem-required {
+  color: var(--argila);
+  margin-left: 2px;
+}
+
+.apicem-lgpd {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--cinza);
+  line-height: 1.5;
+}
+
+.apicem-lgpd input[type="checkbox"] {
+  margin-top: 2px;
+  accent-color: var(--argila);
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.apicem-lgpd a { color: var(--argila); }
+
+.apicem-form-error {
+  font-size: 12px;
+  color: var(--argila);
+  min-height: 16px;
+}
+
+/* ── Accessibility ──────────────────────────────────────── */
+
+.apicem-sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0);
+  white-space: nowrap; border: 0;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--argila);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ── Mobile (≤760px) ────────────────────────────────────── */
+
+@media (max-width: 760px) {
+  .apicem-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    min-height: auto;
+  }
+
+  .apicem-preview-col {
+    border-right: none;
+    border-bottom: 1px solid var(--linha);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--creme);
+  }
+
+  .apicem-preview-sticky {
+    position: static;
+    height: auto;
+    padding: 20px 20px 16px;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 16px;
+  }
+
+  .apicem-preview-wrap {
+    max-width: 160px;
+    flex-shrink: 0;
+  }
+
+  .apicem-preview-caption {
+    font-size: 12px;
+    text-align: left;
+  }
+
+  .apicem-step-col {
+    padding: 28px 20px 60px;
+    gap: 20px;
+  }
+
+  .apicem-step-title {
+    font-size: clamp(22px, 6vw, 32px);
+  }
+
+  .apicem-modal {
+    padding: 28px 20px;
+    max-width: 100%;
+    max-height: 95vh;
+  }
+
+  .apicem-options.apicem-options--cards {
+    grid-template-columns: 1fr;
+  }
+}
