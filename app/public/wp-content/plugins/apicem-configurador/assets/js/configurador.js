@@ -4,50 +4,49 @@
 (function () {
 
   var cfg = window.apicemConfig || {};
-  var steps   = (cfg.wizard && cfg.wizard.steps) || [];
+  var steps       = (cfg.wizard && cfg.wizard.steps) || [];
   var tamanhos    = cfg.tamanhos    || [];
   var bordas      = cfg.bordas      || [];
   var acabamentos = cfg.acabamentos || [];
 
   // Wizard state
   var state = {
-    currentStep: 0,   // index into activeSteps
-    tamanho:    null,
-    borda:      null,
-    acabamento: null,
-    caixa:      false,
-    caixaChosen: false,
-    cep:        '',
-    cidade:     '',
-    uf:         '',
-    lgpdConsent: false,
+    currentStep:  0,
+    tamanho:      null,
+    borda:        null,
+    acabamento:   null,
+    caixa:        false,
+    caixaChosen:  false,
+    cep:          '',
+    rua:          '',
+    numero:       '',
+    complemento:  '',
+    cidade:       '',
+    uf:           '',
+    lgpdConsent:  false,
   };
 
   var activeSteps = steps.filter(function(s){ return s.ativo; });
 
   // DOM refs
   var root, stepperEl, stepContentEl, previewWrap, captionEl, modalEl, modalBody;
-
-  // Tracking consent gate
   var trackingEnabled = false;
 
   function init() {
     root = document.getElementById('apicem-configurador');
     if (!root) return;
 
-    stepperEl    = root.querySelector('.apicem-stepper');
+    stepperEl     = root.querySelector('.apicem-stepper');
     stepContentEl = root.querySelector('.apicem-step-content');
-    previewWrap  = root.querySelector('.apicem-preview-wrap');
-    captionEl    = root.querySelector('.apicem-preview-caption');
-    modalEl      = root.querySelector('.apicem-modal-overlay');
-    modalBody    = root.querySelector('.apicem-modal-body');
+    previewWrap   = root.querySelector('.apicem-preview-wrap');
+    captionEl     = root.querySelector('.apicem-preview-caption');
+    modalEl       = root.querySelector('.apicem-modal-overlay');
+    modalBody     = root.querySelector('.apicem-modal-body');
 
     ApicemPreview.init(previewWrap);
     ApicemPreview.update(state);
 
-    // Load tracking scripts if configured
     setupTracking();
-
     renderStepper();
     renderStep(0);
 
@@ -59,29 +58,40 @@
   }
 
   // ── Stepper ────────────────────────────────────────────────
+  // Shows steps 1–6 (excludes 'hero'). Numbering starts at 1.
 
   function renderStepper() {
     stepperEl.innerHTML = '';
-    activeSteps.forEach(function(step, i) {
+    var visibleSteps  = activeSteps.filter(function(s){ return s.slug !== 'hero'; });
+    var currentSlug   = activeSteps[state.currentStep] ? activeSteps[state.currentStep].slug : '';
+
+    visibleSteps.forEach(function(step, i) {
+      var origIndex = activeSteps.indexOf(step);
+
       if (i > 0) {
         var sep = document.createElement('span');
         sep.className = 'apicem-stepper-sep';
         sep.setAttribute('aria-hidden', 'true');
         stepperEl.appendChild(sep);
       }
+
       var item = document.createElement('button');
       item.type = 'button';
-      item.className = 'apicem-stepper-item ' + stepClass(i);
-      item.setAttribute('aria-label', 'Passo ' + step.numero + ': ' + step.titulo);
-      if (i > state.currentStep) item.setAttribute('aria-disabled', 'true');
+      var cls = 'apicem-stepper-item ';
+      if (step.slug === currentSlug)    cls += 'is-active';
+      else if (origIndex < state.currentStep) cls += 'is-done';
+      else                              cls += 'is-future';
+      item.className = cls;
+      item.setAttribute('aria-label', 'Passo ' + (i + 1) + ': ' + step.titulo);
+      if (origIndex > state.currentStep) item.setAttribute('aria-disabled', 'true');
 
       var dot = document.createElement('span');
       dot.className = 'apicem-stepper-dot';
-      dot.textContent = step.numero;
+      dot.textContent = i + 1;
       item.appendChild(dot);
 
       item.addEventListener('click', function() {
-        if (i <= state.currentStep) goToStep(i);
+        if (origIndex <= state.currentStep) goToStep(origIndex);
       });
       stepperEl.appendChild(item);
     });
@@ -100,6 +110,9 @@
     var step = activeSteps[index];
     if (!step) return;
 
+    // Hero gets its own full-width layout; all others show the split layout
+    root.classList.toggle('is-hero', step.slug === 'hero');
+
     renderStepper();
 
     var el = document.createElement('div');
@@ -114,8 +127,12 @@
       case 'acabamento': renderAcabamento(el, step); break;
       case 'caixa':      renderCaixa(el, step);      break;
       case 'cep':        renderCep(el, step);        break;
-      case 'resumo':     openModal();                return;
-      default:           renderGeneric(el, step);
+      case 'resumo':
+        openModal();
+        // Keep currentStep at resumo so stepper reflects it, but don't
+        // overwrite the step content (keep last visible step in background)
+        return;
+      default: renderGeneric(el, step);
     }
 
     stepContentEl.innerHTML = '';
@@ -143,15 +160,50 @@
     }
   }
 
-  // ── Step: Hero ─────────────────────────────────────────────
+  // ── Step: Hero (Passo 0 — layout aspiracional full-width) ──
 
   function renderHero(el, step) {
-    stepHeader(el, step);
-
     var hero = cfg.hero || {};
-    var mediaEl;
 
+    // Text block (with its own internal padding via CSS)
+    var content = document.createElement('div');
+    content.className = 'apicem-hero-content';
+
+    if (step.kicker) {
+      var k = document.createElement('p');
+      k.className = 'apicem-kicker';
+      k.textContent = step.kicker;
+      content.appendChild(k);
+    }
+
+    var h1 = document.createElement('h1');
+    h1.className = 'apicem-hero-h1';
+    h1.textContent = hero.h1 || step.titulo || 'A sua mesa, do seu jeito.';
+    content.appendChild(h1);
+
+    if (hero.h2 || step.texto_apoio) {
+      var lead = document.createElement('p');
+      lead.className = 'apicem-hero-lead';
+      lead.textContent = hero.h2 || step.texto_apoio;
+      content.appendChild(lead);
+    }
+
+    var nav = document.createElement('div');
+    nav.className = 'apicem-nav';
+    var btn = makeBtn('primary', hero.cta_texto || 'Monte a sua');
+    btn.addEventListener('click', function() {
+      fireEvent('configurador_iniciado');
+      goToStep(1);
+    });
+    nav.appendChild(btn);
+    content.appendChild(nav);
+    el.appendChild(content);
+
+    // Full-width media — no horizontal constraints
     if (hero.media_url) {
+      var mediaWrap = document.createElement('div');
+      mediaWrap.className = 'apicem-hero-media--full';
+      var mediaEl;
       if (hero.media_type && hero.media_type.indexOf('video') === 0) {
         mediaEl = document.createElement('video');
         mediaEl.src = hero.media_url;
@@ -164,30 +216,14 @@
         mediaEl.src = hero.media_url;
         mediaEl.alt = 'Mesa Apicem';
       }
-      var wrap = document.createElement('div');
-      wrap.className = 'apicem-hero-media';
-      wrap.appendChild(mediaEl);
-      el.appendChild(wrap);
+      mediaWrap.appendChild(mediaEl);
+      el.appendChild(mediaWrap);
     } else {
       var ph = document.createElement('div');
-      ph.className = 'apicem-hero-media';
-      ph.innerHTML = '<div class="apicem-hero-placeholder">' + deskPlaceholderSVG() + '<span>Imagem em breve</span></div>';
+      ph.className = 'apicem-hero-video-placeholder';
+      ph.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 3l14 9-14 9V3z" fill="currentColor" opacity=".4"/></svg><span>Vídeo em breve</span>';
       el.appendChild(ph);
     }
-
-    var nav = document.createElement('div');
-    nav.className = 'apicem-nav';
-    var btn = makeBtn('primary', hero.cta_texto || 'Monte a sua');
-    btn.addEventListener('click', function() {
-      fireEvent('configurador_iniciado');
-      goToStep(1);
-    });
-    nav.appendChild(btn);
-    el.appendChild(nav);
-  }
-
-  function deskPlaceholderSVG() {
-    return '<svg viewBox="0 0 80 60" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="8" width="72" height="36" rx="4" fill="#E7DBC9"/><rect x="36" y="44" width="4" height="12" rx="2" fill="#C8BFB5"/><rect x="40" y="44" width="4" height="12" rx="2" fill="#C8BFB5"/></svg>';
   }
 
   // ── Step: Tamanho ──────────────────────────────────────────
@@ -221,20 +257,27 @@
     el.appendChild(navButtons(true));
   }
 
-  // ── Step: Borda ────────────────────────────────────────────
+  // ── Step: Borda (Bisel removido; Curva com descrição completa) ──
 
   function renderBorda(el, step) {
     stepHeader(el, step);
     var grid = document.createElement('div');
     grid.className = 'apicem-options apicem-options--cards';
 
-    bordas.forEach(function(b) {
+    var bordasVisiveis = bordas.filter(function(b){ return b.perfil !== 'chanfrada'; });
+
+    bordasVisiveis.forEach(function(b) {
+      var desc = b.descricao;
+      if (b.perfil === 'arredondada') {
+        desc = 'Cantos arredondados, bordas chanfradas e emborrachadas — toque suave e seguro.';
+      }
+
       var card = document.createElement('button');
       card.type = 'button';
       card.className = 'apicem-option-card' + (state.borda && state.borda.id === b.id ? ' is-selected' : '');
       card.setAttribute('aria-pressed', !!(state.borda && state.borda.id === b.id));
       card.innerHTML = '<p class="apicem-option-card-title">' + esc(b.title) + '</p>' +
-                       '<p class="apicem-option-card-desc">' + esc(b.descricao) + '</p>';
+                       '<p class="apicem-option-card-desc">' + esc(desc) + '</p>';
       card.addEventListener('click', function() {
         state.borda = b;
         ApicemPreview.update(state);
@@ -276,7 +319,6 @@
       btn.setAttribute('aria-selected', !!(state.acabamento && state.acabamento.id === a.id));
       btn.setAttribute('title', a.title);
 
-      // Grain pattern hint for madeira
       if (a.tipo === 'madeira') {
         btn.style.backgroundImage = 'repeating-linear-gradient(90deg, rgba(255,255,255,0.08) 0 1px, transparent 1px 4px)';
       }
@@ -345,7 +387,7 @@
     el.appendChild(navButtons(true));
   }
 
-  // ── Step: CEP ──────────────────────────────────────────────
+  // ── Step: CEP / Endereço ───────────────────────────────────
 
   function renderCep(el, step) {
     var entrega = cfg.entrega || {};
@@ -354,54 +396,113 @@
     var group = document.createElement('div');
     group.className = 'apicem-cep-group';
 
-    var cepInput = document.createElement('input');
-    cepInput.type = 'text';
-    cepInput.className = 'apicem-input';
+    // CEP
+    group.appendChild(fieldLabel('CEP', 'apicem-cep'));
+    var cepInput = makeInput('apicem-cep', 'text', state.cep ? (state.cep.slice(0,5) + (state.cep.length > 5 ? '-' + state.cep.slice(5) : '')) : '');
     cepInput.placeholder = '00000-000';
     cepInput.maxLength = 9;
-    cepInput.value = state.cep || '';
-    cepInput.setAttribute('aria-label', 'CEP');
     cepInput.setAttribute('inputmode', 'numeric');
+    group.appendChild(cepInput);
 
-    var locationDisplay = document.createElement('p');
-    locationDisplay.className = 'apicem-cep-location';
-    locationDisplay.textContent = state.cidade ? state.cidade + '/' + state.uf : '';
+    // Rua (readonly)
+    group.appendChild(fieldLabel('Rua', 'apicem-rua'));
+    var ruaInput = makeInput('apicem-rua', 'text', state.rua || '');
+    ruaInput.readOnly = true;
+    ruaInput.placeholder = 'Preenchido automaticamente';
+    group.appendChild(ruaInput);
 
+    // Número + Complemento inline
+    var inlineRow = document.createElement('div');
+    inlineRow.className = 'apicem-cep-inline';
+
+    var numGroup = document.createElement('div');
+    numGroup.appendChild(fieldLabel('Número', 'apicem-numero'));
+    var numInput = makeInput('apicem-numero', 'text', state.numero || '');
+    numInput.placeholder = '000';
+    numInput.setAttribute('inputmode', 'numeric');
+    numGroup.appendChild(numInput);
+
+    var compGroup = document.createElement('div');
+    compGroup.appendChild(fieldLabel('Complemento', 'apicem-complemento'));
+    var compInput = makeInput('apicem-complemento', 'text', state.complemento || '');
+    compInput.placeholder = 'Apto, bloco…';
+    compGroup.appendChild(compInput);
+
+    inlineRow.appendChild(numGroup);
+    inlineRow.appendChild(compGroup);
+    group.appendChild(inlineRow);
+
+    // Cidade / Estado (readonly)
+    group.appendChild(fieldLabel('Cidade / Estado', 'apicem-cidade'));
+    var locationInput = makeInput('apicem-cidade', 'text', state.cidade ? state.cidade + ' / ' + state.uf : '');
+    locationInput.readOnly = true;
+    locationInput.placeholder = 'Preenchido automaticamente';
+    group.appendChild(locationInput);
+
+    // Hint
     var hint = document.createElement('p');
     hint.className = 'apicem-cep-hint';
-
-    group.appendChild(cepInput);
-    group.appendChild(locationDisplay);
     group.appendChild(hint);
+
     el.appendChild(group);
+
+    // Listeners
+    numInput.addEventListener('input',  function(){ state.numero      = this.value; });
+    compInput.addEventListener('input', function(){ state.complemento = this.value; });
 
     if (entrega.cep_autocomplete !== false) {
       cepInput.addEventListener('input', function() {
         var raw = this.value.replace(/\D/g,'');
-        // Format: 00000-000
         this.value = raw.length > 5 ? raw.slice(0,5) + '-' + raw.slice(5,8) : raw;
         state.cep = raw;
-        if (raw.length === 8) fetchCep(raw, locationDisplay, hint);
-        else { locationDisplay.textContent = ''; state.cidade = ''; state.uf = ''; }
+        if (raw.length === 8) {
+          fetchCep(raw, ruaInput, locationInput, hint);
+        } else {
+          ruaInput.value    = '';
+          locationInput.value = '';
+          state.rua    = '';
+          state.cidade = '';
+          state.uf     = '';
+        }
       });
     }
 
     el.appendChild(navButtons(false));
   }
 
-  function fetchCep(cep, locationEl, hintEl) {
+  function fieldLabel(text, forId) {
+    var lbl = document.createElement('label');
+    lbl.className = 'apicem-form-label';
+    lbl.htmlFor   = forId;
+    lbl.textContent = text;
+    return lbl;
+  }
+
+  function makeInput(id, type, value) {
+    var inp = document.createElement('input');
+    inp.type      = type;
+    inp.id        = id;
+    inp.className = 'apicem-input';
+    inp.value     = value;
+    return inp;
+  }
+
+  function fetchCep(cep, ruaEl, locationEl, hintEl) {
     var timeout = new Promise(function(_, reject){ setTimeout(function(){ reject(new Error('timeout')); }, 3000); });
     var request = fetch('https://viacep.com.br/ws/' + cep + '/json/').then(function(r){ return r.json(); });
 
     Promise.race([request, timeout]).then(function(data) {
       if (data.erro) {
-        hintEl.textContent = 'CEP não encontrado. Você pode continuar assim mesmo.';
-        locationEl.textContent = '';
+        hintEl.textContent    = 'CEP não encontrado. Você pode continuar assim mesmo.';
+        ruaEl.value           = '';
+        locationEl.value      = '';
         return;
       }
+      state.rua    = data.logradouro || '';
       state.cidade = data.localidade || '';
-      state.uf     = data.uf || '';
-      locationEl.textContent = state.cidade + '/' + state.uf;
+      state.uf     = data.uf         || '';
+      ruaEl.value       = state.rua;
+      locationEl.value  = state.cidade + ' / ' + state.uf;
       hintEl.textContent = '';
       fireEvent('cep_preenchido', { cep: cep, cidade: state.cidade, uf: state.uf });
     }).catch(function() {
@@ -467,12 +568,11 @@
     return btn;
   }
 
-  // ── Modal (step 7 — Resumo + envio) ───────────────────────
+  // ── Modal (step Resumo + envio) ────────────────────────────
 
   function openModal() {
     modalBody.innerHTML = '';
 
-    // Header
     var h = document.createElement('h2');
     h.id = 'apicem-modal-title';
     h.className = 'apicem-step-title';
@@ -480,20 +580,14 @@
     h.textContent = 'O seu orçamento';
     modalBody.appendChild(h);
 
-    // Mini preview
     var previewClone = document.createElement('div');
     previewClone.className = 'apicem-modal-preview';
     ApicemPreview.init(previewClone);
     ApicemPreview.update(state);
     modalBody.appendChild(previewClone);
 
-    // Summary
-    var summary = buildSummary();
-    modalBody.appendChild(summary);
-
-    // Form
-    var form = buildForm();
-    modalBody.appendChild(form);
+    modalBody.appendChild(buildSummary());
+    modalBody.appendChild(buildForm());
 
     modalEl.removeAttribute('hidden');
     modalEl.querySelector('.apicem-modal-close').focus();
@@ -501,23 +595,37 @@
 
   function closeModal() {
     modalEl.setAttribute('hidden', '');
-    // Restore main preview refs (modal's init() overwrites the singleton)
+    // Restore main preview (modal's init() overwrites the singleton refs)
     ApicemPreview.init(previewWrap);
     ApicemPreview.update(state);
+    // Go back to the step before resumo so user can re-open the modal
+    var resumoIdx = activeSteps.findIndex(function(s){ return s.slug === 'resumo'; });
+    if (resumoIdx > 0 && state.currentStep >= resumoIdx) {
+      renderStep(resumoIdx - 1);
+    }
   }
 
   function buildSummary() {
     var div = document.createElement('div');
     div.className = 'apicem-summary';
 
+    var enderecoVal = '—';
+    if (state.rua || state.cidade) {
+      enderecoVal = (state.rua || '') +
+                    (state.numero ? ', ' + state.numero : '') +
+                    (state.complemento ? ' — ' + state.complemento : '');
+      if (state.cidade) enderecoVal += ' · ' + state.cidade + '/' + state.uf;
+    } else if (state.cep) {
+      enderecoVal = state.cep;
+    }
+
     var rows = [
-      ['Tamanho',       state.tamanho    ? state.tamanho.title    : '—'],
-      ['Borda',         state.borda      ? state.borda.title      : '—'],
-      ['Acabamento',    state.acabamento ? state.acabamento.title : '—'],
+      ['Tamanho',        state.tamanho    ? state.tamanho.title    : '—'],
+      ['Borda',          state.borda      ? state.borda.title      : '—'],
+      ['Acabamento',     state.acabamento ? state.acabamento.title : '—'],
       ['Caixa elétrica', state.caixaChosen ? (state.caixa ? 'Sim' : 'Não') : '—'],
-      ['CEP',           state.cep || '—'],
+      ['Endereço',       enderecoVal],
     ];
-    if (state.cidade) rows[4][1] += ' — ' + state.cidade + '/' + state.uf;
 
     rows.forEach(function(r) {
       var row = document.createElement('div');
@@ -550,10 +658,10 @@
       lbl.innerHTML = esc(label) + ' <span class="apicem-required" aria-hidden="true">*</span>';
 
       var inp = document.createElement('input');
-      inp.type = key === 'email' ? 'email' : key === 'telefone' ? 'tel' : 'text';
-      inp.id = 'apicem-field-' + key;
+      inp.type  = key === 'email' ? 'email' : key === 'telefone' ? 'tel' : 'text';
+      inp.id    = 'apicem-field-' + key;
       inp.className = 'apicem-input';
-      inp.required = true;
+      inp.required  = true;
       inp.setAttribute('aria-required', 'true');
 
       var err = document.createElement('span');
@@ -574,12 +682,13 @@
     lgpdLabel.className = 'apicem-lgpd';
     var lgpdCheck = document.createElement('input');
     lgpdCheck.type = 'checkbox';
-    lgpdCheck.id = 'apicem-lgpd';
+    lgpdCheck.id   = 'apicem-lgpd';
     lgpdCheck.required = true;
     var lgpdText = document.createElement('span');
     var politicaUrl = esc(leadCfg.politica_url || '/politica-de-privacidade');
-    var lgpdTxt = esc(leadCfg.lgpd_texto || 'Li e aceito a Política de Privacidade.');
-    lgpdText.innerHTML = lgpdTxt.replace('Política de Privacidade', '<a href="' + politicaUrl + '" target="_blank">Política de Privacidade</a>');
+    var lgpdTxt     = esc(leadCfg.lgpd_texto   || 'Li e aceito a Política de Privacidade.');
+    lgpdText.innerHTML = lgpdTxt.replace('Política de Privacidade',
+      '<a href="' + politicaUrl + '" target="_blank">Política de Privacidade</a>');
     lgpdLabel.appendChild(lgpdCheck);
     lgpdLabel.appendChild(lgpdText);
     var lgpdErr = document.createElement('span');
@@ -590,23 +699,21 @@
     form.appendChild(lgpdField);
 
     // Submit
-    var waCfg = cfg.whatsapp || {};
+    var waCfg     = cfg.whatsapp || {};
     var submitBtn = makeBtn('primary', 'Receber meu orçamento no WhatsApp');
-    submitBtn.style.width = '100%';
+    submitBtn.style.width     = '100%';
     submitBtn.style.marginTop = '8px';
     if (!waCfg.telefone) {
       submitBtn.disabled = true;
-      submitBtn.title = 'Número de WhatsApp não configurado.';
+      submitBtn.title    = 'Número de WhatsApp não configurado.';
     }
 
     submitBtn.addEventListener('click', function() {
       var valid = true;
 
-      // Clear errors
       Object.values(inputs).forEach(function(f){ f.err.textContent = ''; });
       lgpdErr.textContent = '';
 
-      // Validate fields
       campos.forEach(function(key) {
         var f = inputs[key];
         if (!f.el.value.trim()) {
@@ -623,9 +730,8 @@
       }
       if (!valid) return;
 
-      // Enable tracking after consent
-      trackingEnabled = true;
-      state.lgpdConsent = true;
+      trackingEnabled      = true;
+      state.lgpdConsent    = true;
 
       var leadData = {};
       campos.forEach(function(k){ leadData[k] = inputs[k].el.value.trim(); });
@@ -637,7 +743,6 @@
       });
       firePixel('Lead');
       firePixel('Contact');
-
       sendToWhatsapp(leadData);
     });
     form.appendChild(submitBtn);
@@ -649,52 +754,42 @@
 
   function sendToWhatsapp(lead) {
     var waCfg = cfg.whatsapp || {};
-    var tel  = waCfg.telefone || '';
+    var tel   = waCfg.telefone || '';
     if (!tel) return;
 
-    var tpl = waCfg.template || '';
-    var msg = tpl
-      .replace('{tamanho}',    state.tamanho    ? state.tamanho.title    : '')
-      .replace('{borda}',      state.borda      ? state.borda.title      : '')
-      .replace('{acabamento}', state.acabamento ? state.acabamento.title : '')
-      .replace('{sim_nao}',    state.caixa ? 'Sim' : 'Não')
-      .replace('{cep}',        state.cep    || '')
-      .replace('{cidade}',     state.cidade || '')
-      .replace('{uf}',         state.uf     || '')
-      .replace('{nome}',       lead.nome     || '')
-      .replace('{email}',      lead.email    || '')
-      .replace('{telefone}',   lead.telefone || '');
+    var msg = (waCfg.template || '')
+      .replace('{tamanho}',      state.tamanho    ? state.tamanho.title    : '')
+      .replace('{borda}',        state.borda      ? state.borda.title      : '')
+      .replace('{acabamento}',   state.acabamento ? state.acabamento.title : '')
+      .replace('{sim_nao}',      state.caixa ? 'Sim' : 'Não')
+      .replace('{rua}',          state.rua          || '')
+      .replace('{numero}',       state.numero       || '')
+      .replace('{complemento}',  state.complemento  || '')
+      .replace('{cep}',          state.cep          || '')
+      .replace('{cidade}',       state.cidade       || '')
+      .replace('{uf}',           state.uf           || '')
+      .replace('{nome}',         lead.nome          || '')
+      .replace('{email}',        lead.email         || '')
+      .replace('{telefone}',     lead.telefone      || '');
 
-    var url = 'https://wa.me/' + tel + '?text=' + encodeURIComponent(msg);
-    window.open(url, '_blank', 'noopener,noreferrer');
+    window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(msg), '_blank', 'noopener,noreferrer');
   }
 
   // ── Tracking ───────────────────────────────────────────────
 
-  function setupTracking() {
-    var integr = cfg.integracoes || {};
-    // GA4 and Pixel scripts are already enqueued by PHP if IDs exist.
-    // Fire page_view once consent is known (for now, fire after LGPD interaction).
-    // page_view is fired on init; all others gated on trackingEnabled.
-  }
+  function setupTracking() {}
 
   function fireEvent(name, params) {
-    // page_view fires always (pre-consent, cookieless)
     var preCons = (name === 'page_view');
     if (!preCons && !trackingEnabled) return;
-
     var integr = cfg.integracoes || {};
-    if (integr.ga4_id && window.gtag) {
-      window.gtag('event', name, params || {});
-    }
+    if (integr.ga4_id && window.gtag) window.gtag('event', name, params || {});
   }
 
   function firePixel(eventName) {
     if (!trackingEnabled) return;
     var integr = cfg.integracoes || {};
-    if (integr.pixel_id && window.fbq) {
-      window.fbq('track', eventName);
-    }
+    if (integr.pixel_id && window.fbq) window.fbq('track', eventName);
   }
 
   // ── Utility ────────────────────────────────────────────────
@@ -702,11 +797,8 @@
   function esc(str) {
     if (!str) return '';
     return String(str)
-      .replace(/&/g,'&amp;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;')
-      .replace(/"/g,'&quot;')
-      .replace(/'/g,'&#39;');
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   }
 
   // ── Bootstrap ──────────────────────────────────────────────

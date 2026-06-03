@@ -150,9 +150,10 @@ window.ApicemPreview = (function () {
       topFace.setAttribute('fill',   hex);
     }
 
-    // Wood grain (always polygon, slight corner mismatch on arredondada is unnoticeable)
+    // Wood grain overlay — fill must match the tampo hex so multiply() works correctly
     if (tipo === 'madeira') {
       grainOverlay.setAttribute('points', pts([FL, FR, BR, BL]));
+      grainOverlay.setAttribute('fill', hex);
       svg.querySelector('#apicem-grain-filter feTurbulence').setAttribute('seed', seedId);
       grainOverlay.style.display = '';
     } else {
@@ -336,14 +337,18 @@ window.ApicemPreview = (function () {
       '<svg id="apicem-preview-svg" viewBox="0 0 560 280" xmlns="http://www.w3.org/2000/svg"',
       '     role="img" aria-label="Preview da mesa">',
       '  <defs>',
-      '    <filter id="apicem-grain-filter" x="0%" y="0%" width="100%" height="100%">',
-      '      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" seed="2" stitchTiles="stitch" result="noise"/>',
-      '      <feColorMatrix in="noise" type="saturate" values="0" result="gray"/>',
-      '      <feBlend in="SourceGraphic" in2="gray" mode="multiply" result="blend"/>',
-      '      <feComponentTransfer in="blend">',
-      '        <feFuncA type="linear" slope="0.15"/>',
+      '    <!-- Organic wood grain: directional fibers blended with knot noise -->',
+      '    <filter id="apicem-grain-filter" x="0%" y="0%" width="100%" height="100%" color-interpolation-filters="sRGB">',
+      '      <feTurbulence type="turbulence"   baseFrequency="0.012 0.40" numOctaves="5" seed="2" result="fibers"/>',
+      '      <feTurbulence type="fractalNoise" baseFrequency="0.06 0.06"  numOctaves="3" seed="7" result="knots"/>',
+      '      <feBlend in="fibers" in2="knots" mode="screen" result="combined"/>',
+      '      <feColorMatrix in="combined" type="saturate" values="0" result="gray"/>',
+      '      <feComponentTransfer in="gray" result="grain">',
+      '        <feFuncR type="gamma" amplitude="1.1" exponent="0.75" offset="-0.05"/>',
+      '        <feFuncG type="gamma" amplitude="1.1" exponent="0.75" offset="-0.05"/>',
+      '        <feFuncB type="gamma" amplitude="1.1" exponent="0.75" offset="-0.05"/>',
       '      </feComponentTransfer>',
-      '      <feComposite in2="SourceGraphic" operator="over"/>',
+      '      <feBlend in="SourceGraphic" in2="grain" mode="multiply"/>',
       '    </filter>',
       '  </defs>',
       '  <ellipse id="apicem-shadow"          fill="rgba(43,36,32,1)" fill-opacity="0.07"/>',

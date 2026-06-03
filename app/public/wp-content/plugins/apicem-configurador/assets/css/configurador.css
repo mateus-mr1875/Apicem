@@ -105,6 +105,12 @@
   cursor: pointer;
   padding: 4px 0;
   transition: opacity .2s;
+  /* Reset browser default button styles */
+  background: none;
+  border: none;
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .apicem-stepper-item.is-future {
@@ -662,4 +668,94 @@
   .apicem-options.apicem-options--cards {
     grid-template-columns: 1fr;
   }
+}
+
+/* ── Hero step (Passo 0) ────────────────────────────────── */
+
+.apicem-configurador.is-hero .apicem-preview-col { display: none; }
+.apicem-configurador.is-hero .apicem-layout      { grid-template-columns: 1fr; }
+.apicem-configurador.is-hero .apicem-stepper     { display: none; }
+.apicem-configurador.is-hero .apicem-step-col {
+  padding-left:  0;
+  padding-right: 0;
+  padding-top:   0;
+  gap: 0;
+}
+
+.apicem-hero-content {
+  padding: 72px 64px 48px;
+  max-width: 760px;
+}
+
+.apicem-hero-h1 {
+  font-family: var(--font-display);
+  font-size: clamp(36px, 5vw, 64px);
+  line-height: 1.04;
+  color: var(--grafite);
+  margin: 0 0 20px;
+}
+
+.apicem-hero-lead {
+  font-size: clamp(16px, 1.8vw, 20px);
+  line-height: 1.65;
+  color: var(--cinza);
+  margin: 0 0 36px;
+  max-width: 560px;
+}
+
+/* Full-width media — no horizontal constraints */
+.apicem-hero-media--full {
+  width: 100%;
+  border-radius: 0;
+  aspect-ratio: 16/9;
+  background: var(--areia);
+  overflow: hidden;
+  display: block;
+}
+
+.apicem-hero-media--full video,
+.apicem-hero-media--full img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.apicem-hero-video-placeholder {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: var(--areia);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--cinza);
+  font-size: 13px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+/* Hide WordPress page title when the configurador is on the page */
+.apicem-configurador ~ h1.wp-block-heading,
+h1.wp-block-post-title {
+  display: none;
+}
+
+/* ── CEP — address fields ───────────────────────────────── */
+
+.apicem-cep-group {
+  max-width: 460px;
+}
+
+.apicem-cep-inline {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 12px;
+}
+
+/* ── Mobile hero ────────────────────────────────────────── */
+
+@media (max-width: 760px) {
+  .apicem-hero-content { padding: 48px 24px 36px; }
+  .apicem-cep-inline   { grid-template-columns: 100px 1fr; }
 }
