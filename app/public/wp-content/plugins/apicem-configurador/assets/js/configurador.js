@@ -212,6 +212,8 @@
         card.classList.add('is-selected');
         card.setAttribute('aria-pressed', 'true');
         fireEvent('tamanho_selecionado', { tamanho: t.title });
+        var nextBtn = el.querySelector('.apicem-btn--primary');
+        if (nextBtn) nextBtn.disabled = false;
       });
       grid.appendChild(card);
     });
@@ -241,6 +243,8 @@
         card.classList.add('is-selected');
         card.setAttribute('aria-pressed', 'true');
         fireEvent('borda_selecionada', { borda: b.title });
+        var nextBtn = el.querySelector('.apicem-btn--primary');
+        if (nextBtn) nextBtn.disabled = false;
       });
       grid.appendChild(card);
     });
@@ -292,6 +296,8 @@
         btn.classList.add('is-selected');
         btn.setAttribute('aria-selected', 'true');
         fireEvent('acabamento_selecionado', { acabamento: a.title });
+        var nextBtn = el.querySelector('.apicem-btn--primary');
+        if (nextBtn) nextBtn.disabled = false;
       });
       swatchContainer.appendChild(btn);
     });
@@ -329,6 +335,8 @@
         btn.classList.add('is-selected');
         btn.setAttribute('aria-pressed', 'true');
         fireEvent('caixa_eletrica_selecionada', { caixa: val ? 'sim' : 'não' });
+        var nextBtn = el.querySelector('.apicem-btn--primary');
+        if (nextBtn) nextBtn.disabled = false;
       });
       group.appendChild(btn);
     });
@@ -490,6 +498,9 @@
 
   function closeModal() {
     modalEl.setAttribute('hidden', '');
+    // Restore main preview refs (modal's init() overwrites the singleton)
+    ApicemPreview.init(previewWrap);
+    ApicemPreview.update(state);
   }
 
   function buildSummary() {

@@ -1,32 +1,116 @@
-/* Apicem SVG Preview Engine */
+/* Apicem SVG Preview Engine — Cabinet Oblique Perspective */
 'use strict';
 
 window.ApicemPreview = (function () {
 
-  var svg, tampo, grainOverlay, caixaRect, shadowRect, legsGroup, clipChanfrada, clipPath;
-  var currentState = {};
+  // ── Elements ───────────────────────────────────────────────
+  var svg, topFace, grainOverlay, frontFace, frontFacePath, frontChamfer, rightFace, shadowEl, caixaEl;
 
-  // Canvas baseline width
-  var CANVAS_W = 560;
+  // ── Projection constants ───────────────────────────────────
+  var CANVAS_W   = 560;
+  var CANVAS_H   = 280;
+  var SCALE      = 2.5;                         // px per cm
+  var ANGLE_RAD  = 25 * Math.PI / 180;          // cabinet angle
+  var DEPTH_F    = 0.5;                         // foreshortening factor
+  var EDGE_H     = 30;                          // front face height (px)
+  var CHAMFER_H  = 8;                           // chamfer strip height for bisel (px)
+  var ROUND_DIP  = 10;                          // bezier control dip for arredondada (px)
+
+  // Fixed depth geometry — profundidade = 70cm always
+  var PROF = 70;
+  var dx   = Math.round(PROF * DEPTH_F * Math.cos(ANGLE_RAD) * SCALE); // ≈ 79px
+  var dy   = Math.round(PROF * DEPTH_F * Math.sin(ANGLE_RAD) * SCALE); // ≈ 37px
+
+  // frontY = Y coordinate of the top edge of the front face (desk meets viewer)
+  var frontY = CANVAS_H - EDGE_H - 28; // ≈ 222
+
+  // ── Public API ─────────────────────────────────────────────
 
   function init(container) {
     container.innerHTML = buildSVG();
-    svg          = container.querySelector('svg');
-    tampo        = svg.querySelector('#apicem-tampo');
-    grainOverlay = svg.querySelector('#apicem-grain-overlay');
-    caixaRect    = svg.querySelector('#apicem-caixa');
-    shadowRect   = svg.querySelector('#apicem-shadow');
-    legsGroup    = svg.querySelector('#apicem-legs');
-    clipChanfrada = svg.querySelector('#apicem-clip-chanfrada polygon');
-    clipPath     = svg.querySelector('#apicem-clip-use');
+    svg           = container.querySelector('svg');
+    shadowEl      = svg.querySelector('#apicem-shadow');
+    rightFace     = svg.querySelector('#apicem-right-face');
+    frontFace     = svg.querySelector('#apicem-front-face');
+    frontFacePath = svg.querySelector('#apicem-front-face-path');
+    frontChamfer  = svg.querySelector('#apicem-front-chamfer');
+    topFace       = svg.querySelector('#apicem-top-face');
+    grainOverlay  = svg.querySelector('#apicem-grain-overlay');
+    caixaEl       = svg.querySelector('#apicem-caixa');
   }
+
+  function update(state) {
+    if (!svg) return;
+
+    var largura = state.tamanho ? state.tamanho.largura_cm : 140;
+    var hex     = state.acabamento ? state.acabamento.hex  : '#E7DBC9';
+    var tipo    = state.acabamento ? state.acabamento.tipo : 'solido';
+    var seedId  = state.acabamento ? (state.acabamento.id % 20) : 2;
+    var perfil  = state.borda     ? state.borda.perfil     : 'reta';
+
+    // ── Geometry ─────────────────────────────────────────────
+    var W  = Math.round(largura * SCALE);
+    var cx = Math.round(CANVAS_W / 2 - dx / 2); // center compensated for depth offset
+
+    var FL = { x: cx - Math.floor(W / 2), y: frontY };       // front-left
+    var FR = { x: cx + Math.ceil(W / 2),  y: frontY };       // front-right
+    var BR = { x: FR.x + dx, y: frontY - dy };               // back-right
+    var BL = { x: FL.x + dx, y: frontY - dy };               // back-left
+
+    // ── Shadow (ellipse below front face) ────────────────────
+    shadowEl.setAttribute('cx', Math.round((FL.x + FR.x) / 2));
+    shadowEl.setAttribute('cy', frontY + EDGE_H + 6);
+    shadowEl.setAttribute('rx', Math.round(W * 0.44));
+    shadowEl.setAttribute('ry', 7);
+
+    // ── Right face (darkest — in deepest shadow) ─────────────
+    var FRb = { x: FR.x, y: FR.y + EDGE_H };
+    var BRb = { x: BR.x, y: BR.y + EDGE_H };
+    rightFace.setAttribute('points', pts([FR, BR, BRb, FRb]));
+    rightFace.setAttribute('fill', shade(hex, -38));
+
+    // ── Top face (tampo surface) ─────────────────────────────
+    topFace.setAttribute('points', pts([FL, FR, BR, BL]));
+    topFace.setAttribute('fill', hex);
+
+    // ── Wood grain overlay ───────────────────────────────────
+    if (tipo === 'madeira') {
+      grainOverlay.setAttribute('points', pts([FL, FR, BR, BL]));
+      svg.querySelector('#apicem-grain-filter feTurbulence').setAttribute('seed', seedId);
+      grainOverlay.style.display = '';
+    } else {
+      grainOverlay.style.display = 'none';
+    }
+
+    // ── Front face — borda profile ───────────────────────────
+    applyBorda(perfil, FL, FR, hex);
+
+    // ── Caixa elétrica ───────────────────────────────────────
+    if (state.caixa) {
+      caixaEl.setAttribute('points', pts(computeCaixa(FL, W)));
+      caixaEl.setAttribute('fill', shade(hex, -32));
+      caixaEl.style.display = '';
+    } else {
+      caixaEl.style.display = 'none';
+    }
+  }
+
+  function getCaption(state) {
+    var parts = [];
+    if (state.tamanho)    parts.push(state.tamanho.title);
+    if (state.borda)      parts.push(state.borda.title);
+    if (state.acabamento) parts.push(state.acabamento.title);
+    return parts.join(' · ');
+  }
+
+  // ── Private helpers ────────────────────────────────────────
 
   function buildSVG() {
     return [
-      '<svg id="apicem-preview-svg" viewBox="0 0 560 350" xmlns="http://www.w3.org/2000/svg"',
+      '<svg id="apicem-preview-svg" viewBox="0 0 560 280" xmlns="http://www.w3.org/2000/svg"',
       '     role="img" aria-label="Preview da mesa">',
       '  <defs>',
-      '    <filter id="apicem-grain-filter" x="0" y="0" width="100%" height="100%">',
+      '    <filter id="apicem-grain-filter" x="0%" y="0%" width="100%" height="100%">',
       '      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" seed="2" stitchTiles="stitch" result="noise"/>',
       '      <feColorMatrix in="noise" type="saturate" values="0" result="gray"/>',
       '      <feBlend in="SourceGraphic" in2="gray" mode="multiply" result="blend"/>',
@@ -35,173 +119,109 @@ window.ApicemPreview = (function () {
       '      </feComponentTransfer>',
       '      <feComposite in2="SourceGraphic" operator="over"/>',
       '    </filter>',
-      '    <clipPath id="apicem-clip-chanfrada">',
-      '      <polygon id="apicem-clip-chanfrada" points=""/>',
-      '    </clipPath>',
       '  </defs>',
-      '  <!-- Shadow -->',
-      '  <rect id="apicem-shadow" rx="0" fill="rgba(43,36,32,.12)" />',
-      '  <!-- Desk surface -->',
-      '  <rect id="apicem-tampo" rx="0" fill="#FFFFFF" style="transition:fill .3s ease,rx .3s ease;"/>',
-      '  <!-- Wood grain overlay (madeira only) -->',
-      '  <rect id="apicem-grain-overlay" rx="0" fill="#2B2420" filter="url(#apicem-grain-filter)"',
-      '        style="display:none;pointer-events:none;will-change:opacity;transition:opacity .3s ease;" opacity="1"/>',
-      '  <!-- Electrical box -->',
-      '  <rect id="apicem-caixa" rx="5" fill="rgba(43,36,32,.22)"',
-      '        style="display:none;transition:opacity .3s ease;"/>',
-      '  <!-- Leg dots (top-down hints) -->',
-      '  <g id="apicem-legs" opacity="0.5">',
-      '    <rect class="apicem-leg" width="28" height="12" rx="6" fill="rgba(43,36,32,.35)"/>',
-      '    <rect class="apicem-leg" width="28" height="12" rx="6" fill="rgba(43,36,32,.35)"/>',
-      '    <rect class="apicem-leg" width="28" height="12" rx="6" fill="rgba(43,36,32,.35)"/>',
-      '    <rect class="apicem-leg" width="28" height="12" rx="6" fill="rgba(43,36,32,.35)"/>',
-      '  </g>',
+      '  <ellipse id="apicem-shadow" fill="rgba(43,36,32,.15)"/>',
+      '  <polygon id="apicem-right-face"     style="transition:fill .3s ease"/>',
+      '  <polygon id="apicem-front-face"     style="transition:fill .3s ease"/>',
+      '  <path    id="apicem-front-face-path" style="display:none;transition:fill .3s ease"/>',
+      '  <polygon id="apicem-front-chamfer"  style="display:none;transition:fill .3s ease"/>',
+      '  <polygon id="apicem-top-face"       style="transition:fill .3s ease"/>',
+      '  <polygon id="apicem-grain-overlay"  filter="url(#apicem-grain-filter)"',
+      '           style="display:none;pointer-events:none;will-change:opacity"/>',
+      '  <polygon id="apicem-caixa"          style="display:none;transition:fill .3s ease"/>',
       '</svg>',
     ].join('\n');
   }
 
-  function update(state) {
-    if (!svg) return;
-    currentState = Object.assign({}, state);
+  function applyBorda(perfil, FL, FR, hex) {
+    var faceColor    = shade(hex, -20);
+    var chamferColor = shade(hex, -8);
 
-    var tampoW, tampoH, tampoX, tampoY;
+    var FLb = { x: FL.x, y: FL.y + EDGE_H };
+    var FRb = { x: FR.x, y: FR.y + EDGE_H };
 
-    // Size
-    var largura = state.tamanho ? state.tamanho.largura_cm : 140;
-    var prof    = state.tamanho ? state.tamanho.profundidade_cm : 70;
+    // Reset all variants
+    frontFace.style.display     = 'none';
+    frontFacePath.style.display = 'none';
+    frontChamfer.style.display  = 'none';
 
-    // Scale: 160cm maps to CANVAS_W; maintain aspect ratio
-    var scale   = CANVAS_W / 160;
-    tampoW = Math.round(largura * scale);
-    tampoH = Math.round(prof * scale);
-
-    // Center desk on a 560×350 canvas (allow room for legs below)
-    tampoX = Math.round((CANVAS_W - tampoW) / 2);
-    tampoY = Math.round((350 - tampoH) / 2) - 16;
-
-    // Shadow (offset slightly)
-    shadowRect.setAttribute('x',      tampoX + 4);
-    shadowRect.setAttribute('y',      tampoY + 8);
-    shadowRect.setAttribute('width',  tampoW);
-    shadowRect.setAttribute('height', tampoH);
-
-    // Main tampo rect
-    tampo.setAttribute('x',      tampoX);
-    tampo.setAttribute('y',      tampoY);
-    tampo.setAttribute('width',  tampoW);
-    tampo.setAttribute('height', tampoH);
-
-    // Grain overlay (same coords)
-    grainOverlay.setAttribute('x',      tampoX);
-    grainOverlay.setAttribute('y',      tampoY);
-    grainOverlay.setAttribute('width',  tampoW);
-    grainOverlay.setAttribute('height', tampoH);
-
-    // Border style
-    var perfil = state.borda ? state.borda.perfil : 'reta';
-    applyBorder(perfil, tampoX, tampoY, tampoW, tampoH);
-
-    // Acabamento
-    var hex  = state.acabamento ? state.acabamento.hex : '#FFFFFF';
-    var tipo = state.acabamento ? state.acabamento.tipo : 'solido';
-    var seedId = state.acabamento ? state.acabamento.id : 2;
-    tampo.setAttribute('fill', hex);
-    shadowRect.setAttribute('fill', shadeColor(hex, -25));
-
-    // Grain
-    if (tipo === 'madeira') {
-      svg.querySelector('#apicem-grain-filter feTurbulence').setAttribute('seed', seedId % 20);
-      grainOverlay.style.display = '';
-    } else {
-      grainOverlay.style.display = 'none';
-    }
-
-    // Caixa elétrica
-    var caixa = !!state.caixa;
-    if (caixa) {
-      var cW = Math.round(tampoW * 0.28);
-      var cH = Math.round(tampoH * 0.10);
-      var cX = tampoX + Math.round((tampoW - cW) / 2);
-      var cY = tampoY + Math.round(tampoH * 0.08);
-      caixaRect.setAttribute('x',      cX);
-      caixaRect.setAttribute('y',      cY);
-      caixaRect.setAttribute('width',  cW);
-      caixaRect.setAttribute('height', cH);
-      caixaRect.setAttribute('fill', shadeColor(hex, -30));
-      caixaRect.style.display = '';
-    } else {
-      caixaRect.style.display = 'none';
-    }
-
-    // Leg positions (4 corners, slightly inside)
-    var legs    = legsGroup.querySelectorAll('.apicem-leg');
-    var legInX  = Math.round(tampoW * 0.06);
-    var legInY  = Math.round(tampoH * 0.10);
-    var legW    = parseInt(legs[0].getAttribute('width'));
-    var legH    = parseInt(legs[0].getAttribute('height'));
-    var positions = [
-      [tampoX + legInX, tampoY + legInY],
-      [tampoX + tampoW - legInX - legW, tampoY + legInY],
-      [tampoX + legInX, tampoY + tampoH - legInY - legH],
-      [tampoX + tampoW - legInX - legW, tampoY + tampoH - legInY - legH],
-    ];
-    legs.forEach(function(leg, i) {
-      leg.setAttribute('x', positions[i][0]);
-      leg.setAttribute('y', positions[i][1]);
-    });
-  }
-
-  function applyBorder(perfil, x, y, w, h) {
-    var chanfrada = svg.querySelector('clipPath');
     if (perfil === 'reta') {
-      tampo.setAttribute('rx', 0);
-      tampo.removeAttribute('clip-path');
-      grainOverlay.setAttribute('rx', 0);
-      grainOverlay.removeAttribute('clip-path');
-      chanfrada.style.display = 'none';
-    } else if (perfil === 'arredondada') {
-      var rx = Math.round(Math.min(w, h) * 0.12);
-      tampo.setAttribute('rx', rx);
-      tampo.removeAttribute('clip-path');
-      grainOverlay.setAttribute('rx', rx);
-      grainOverlay.removeAttribute('clip-path');
-      chanfrada.style.display = 'none';
+      // ── Reta: clean straight rectangle ──────────────────────
+      // The edge is a perfect 90° angle — flat face, no detail on top
+      frontFace.setAttribute('points', pts([FL, FR, FRb, FLb]));
+      frontFace.setAttribute('fill', faceColor);
+      frontFace.style.display = '';
+
     } else if (perfil === 'chanfrada') {
-      tampo.setAttribute('rx', 0);
-      grainOverlay.setAttribute('rx', 0);
-      var cut = Math.round(Math.min(w, h) * 0.08);
-      var pts = [
-        (x + cut) + ',' + y,
-        (x + w - cut) + ',' + y,
-        (x + w) + ',' + (y + cut),
-        (x + w) + ',' + (y + h - cut),
-        (x + w - cut) + ',' + (y + h),
-        (x + cut) + ',' + (y + h),
-        x + ',' + (y + h - cut),
-        x + ',' + (y + cut),
-      ].join(' ');
-      svg.querySelector('#apicem-clip-chanfrada polygon').setAttribute('points', pts);
-      chanfrada.style.display = '';
-      tampo.setAttribute('clip-path', 'url(#apicem-clip-chanfrada)');
-      grainOverlay.setAttribute('clip-path', 'url(#apicem-clip-chanfrada)');
+      // ── Bisel: chamfer strip visible at the top of the face ──
+      // The angled cut catches more light → lighter strip at top
+      var FLc = { x: FL.x, y: FL.y + CHAMFER_H };
+      var FRc = { x: FR.x, y: FR.y + CHAMFER_H };
+
+      // Chamfer strip (light — facing partially upward)
+      frontChamfer.setAttribute('points', pts([FL, FR, FRc, FLc]));
+      frontChamfer.setAttribute('fill', chamferColor);
+      frontChamfer.style.display = '';
+
+      // Main front face below the chamfer (darker — facing viewer)
+      frontFace.setAttribute('points', pts([FLc, FRc, FRb, FLb]));
+      frontFace.setAttribute('fill', faceColor);
+      frontFace.style.display = '';
+
+    } else if (perfil === 'arredondada') {
+      // ── Arredondada: bezier curve at the top of the face ─────
+      // The round profile rolls away from the viewer → the top curves inward
+      var midX = Math.round((FL.x + FR.x) / 2);
+      var midY = FL.y + ROUND_DIP;
+      var d = [
+        'M', FL.x, ',', FL.y,
+        ' Q', midX, ',', midY, ' ', FR.x, ',', FR.y,
+        ' L', FRb.x, ',', FRb.y,
+        ' L', FLb.x, ',', FLb.y, 'Z',
+      ].join('');
+      frontFacePath.setAttribute('d', d);
+      frontFacePath.setAttribute('fill', faceColor);
+      frontFacePath.style.display = '';
     }
   }
 
-  function shadeColor(hex, percent) {
-    if (!hex || hex.length < 4) return '#888';
-    var num = parseInt(hex.replace('#',''), 16);
-    var r = Math.max(0, Math.min(255, (num >> 16) + percent));
-    var g = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + percent));
-    var b = Math.max(0, Math.min(255, (num & 0x0000FF) + percent));
-    return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  function computeCaixa(FL, W) {
+    // Electrical box as a perspective parallelogram on the top face
+    // Positioned near the back edge, centered horizontally
+    var cW_ratio = 0.28;
+    var t_front  = 0.55; // depth fraction (0=front edge, 1=back edge)
+    var t_back   = 0.80;
+    var u_left   = (1 - cW_ratio) / 2;
+    var u_right  = u_left + cW_ratio;
+
+    // Any point (u, t) on the top face in perspective:
+    //   x = FL.x + u*W + t*dx
+    //   y = FL.y - t*dy
+    function tp(u, t) {
+      return { x: Math.round(FL.x + u * W + t * dx), y: Math.round(FL.y - t * dy) };
+    }
+
+    return [
+      tp(u_left,  t_front),
+      tp(u_right, t_front),
+      tp(u_right, t_back),
+      tp(u_left,  t_back),
+    ];
   }
 
-  function getCaption(state) {
-    var parts = [];
-    if (state.tamanho) parts.push(state.tamanho.title);
-    if (state.borda)   parts.push(state.borda.title);
-    if (state.acabamento) parts.push(state.acabamento.title);
-    return parts.join(' · ');
+  function pts(arr) {
+    return arr.map(function(p) { return p.x + ',' + p.y; }).join(' ');
+  }
+
+  function shade(hex, amount) {
+    if (!hex || hex.length < 4) return '#888';
+    var full = hex.replace('#', '');
+    if (full.length === 3) full = full[0]+full[0]+full[1]+full[1]+full[2]+full[2];
+    var n = parseInt(full, 16);
+    var r = Math.max(0, Math.min(255, (n >> 16)        + amount));
+    var g = Math.max(0, Math.min(255, ((n >> 8) & 0xFF) + amount));
+    var b = Math.max(0, Math.min(255, (n & 0xFF)        + amount));
+    return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
   }
 
   return { init: init, update: update, getCaption: getCaption };
