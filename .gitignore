@@ -1,0 +1,39 @@
+# WordPress core (don't track, installed separately)
+app/public/wp-admin/
+app/public/wp-includes/
+app/public/wp-*.php
+app/public/index.php
+app/public/license.txt
+app/public/readme.html
+app/public/xmlrpc.php
+app/public/local-xdebuginfo.php
+
+# WordPress uploads (binary/user content)
+app/public/wp-content/uploads/
+
+# Default themes (not ours)
+app/public/wp-content/themes/twentytwentythree/
+app/public/wp-content/themes/twentytwentyfour/
+app/public/wp-content/themes/twentytwentyfive/
+
+# wp-content index placeholder
+app/public/wp-content/index.php
+
+# Sensitive config (local credentials)
+app/public/wp-config.php
+
+# Local by Flywheel internals
+conf/
+logs/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
+
+# Node (if used for build tools)
+node_modules/
+.env
