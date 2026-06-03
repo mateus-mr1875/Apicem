@@ -333,7 +333,7 @@
           '<feBlend in="SourceGraphic" in2="g2" mode="soft-light" result="b"/>' +
           '<feComposite in="b" in2="SourceGraphic" operator="in"/>' +
           '</filter></defs>' +
-          '<rect width="72" height="72" fill="' + a.hex + '" filter="url(#g' + seed + ')"/>' +
+          '<circle cx="36" cy="36" r="36" fill="' + a.hex + '" filter="url(#g' + seed + ')"/>' +
           '</svg>';
         btn.style.backgroundImage = 'url("data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgStr) + '")';
         btn.style.backgroundSize   = 'cover';

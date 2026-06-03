@@ -320,7 +320,6 @@
   transition: opacity .15s;
 }
 
-.apicem-swatch:hover .apicem-swatch-label,
 .apicem-swatch.is-selected .apicem-swatch-label {
   opacity: 1;
 }
